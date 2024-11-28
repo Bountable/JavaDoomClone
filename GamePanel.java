@@ -2,7 +2,10 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.Shape;
 import java.awt.event.KeyListener;
+import java.awt.geom.AffineTransform;
+import java.awt.geom.Rectangle2D;
 import java.sql.Time;
 
 import javax.swing.JPanel;
@@ -14,7 +17,7 @@ public class GamePanel extends JPanel implements Runnable   {
     public static final int WIDTH = 1024;
     public static final int HEIGHT = 512;
 
-    final int ORIGNAL_TILE_SIZE = 21; //16x16 pixels
+    final int ORIGNAL_TILE_SIZE = 50; //16x16 pixels
     final int SCALE = 1; //scale up by 3 to fit modern screens.
 
     final int TILE_SIZE = ORIGNAL_TILE_SIZE * SCALE;
@@ -27,12 +30,32 @@ public class GamePanel extends JPanel implements Runnable   {
 
     final int HALFWAY_POINT_WIDTH = 504;
 
+    Shape player;
+
     Thread gameThread; //keep program running
 
     int FPS = 30;
 
+    double playerRotation = 0; // Rotation angle in radians
+
+    
+
 
     KeyHandler keyHandler = new KeyHandler();
+
+    int map[][] = 
+    {
+        {1,1,1,1,1,1,1,1,1,1},
+        {1,0,0,0,0,0,0,0,0,1},
+        {1,0,0,0,0,0,0,0,0,1},
+        {1,0,0,0,1,1,1,0,0,1},
+        {1,0,0,0,0,0,0,0,0,1},
+        {1,0,0,0,0,0,0,0,0,1},
+        {1,0,0,0,0,0,0,0,0,1},
+        {1,0,0,0,0,0,0,0,0,1},
+        {1,0,0,0,0,0,0,0,0,1},
+        {1,1,1,1,1,1,1,1,1,1},
+    };
 
     //set Default positions of Player
     int playerX = 100;
@@ -43,14 +66,13 @@ public class GamePanel extends JPanel implements Runnable   {
 
 
     public GamePanel() {
+        player = new Rectangle2D.Double(playerX, playerY, TILE_SIZE, TILE_SIZE);
         this.setPreferredSize(new Dimension(WIDTH, 505));
         this.setBackground(Color.BLACK);
         this.setDoubleBuffered(true); //imporve game rednering performance idk
         this.addKeyListener(keyHandler);
         this.setFocusable(true);
 
-        
-        
     }
 
     public void startGameThread(){
@@ -98,17 +120,15 @@ public class GamePanel extends JPanel implements Runnable   {
     }
 
     public void update(){
-        //update game logic here
-
         handlePlayerMovement();
-       
-             
+        repaint();
         
     }
 
 
         
     private void handlePlayerMovement() {
+
         if(playerY == 0){
             playerY += playerSpeed;
 
@@ -121,43 +141,27 @@ public class GamePanel extends JPanel implements Runnable   {
             playerX += playerSpeed;
 
         }
-        if(playerX == 496){
+        if(playerX == 460){
             playerX -= playerSpeed;
 
         }
 
-       
-
-        if(keyHandler.wPressed == true){
-            playerY -= playerSpeed;
+        if (keyHandler.wPressed) playerY -= playerSpeed;
+        if (keyHandler.sPressed) playerY += playerSpeed;
+        if (keyHandler.aPressed) playerX -= playerSpeed;
+        if (keyHandler.dPressed) playerX += playerSpeed;
+    
+        // Adjust rotation angle
+        if (keyHandler.rightPressed) {
+            playerRotation += Math.toRadians(5); // Rotate clockwise
+            if (playerRotation >= 2 * Math.PI) playerRotation -= 2 * Math.PI; // Keep angle within 360 degrees
+            System.out.println("Rotate Right: " + Math.toDegrees(playerRotation));
         }
-            if(keyHandler.sPressed == true){
-            playerY += playerSpeed;
+        if (keyHandler.leftPressed) {
+            playerRotation -= Math.toRadians(5); // Rotate counter-clockwise
+            if (playerRotation < 0) playerRotation += 2 * Math.PI; // Keep angle within 360 degrees
+            System.out.println("Rotate Left: " + Math.toDegrees(playerRotation));
         }
-            if(keyHandler.aPressed == true){
-            playerX -= playerSpeed;
-
-        }
-            if(keyHandler.dPressed == true){
-                System.out.println(playerX);
-
-            playerX += playerSpeed;
-        } 
-        
-        if (keyHandler.rightPressed == true) {
-            //TODO ROTATE 
-
-
-            
-        }
-        if (keyHandler.leftPressed == true) {
-            //TODO ROTATE 
-            
-
-            
-        }
-
-        
     }
         
     @Override
@@ -165,42 +169,77 @@ public class GamePanel extends JPanel implements Runnable   {
         super.paintComponent(g);
         Graphics2D graphics2D = (Graphics2D) g;
     
-        // Draw the player using a separate method
-        player(graphics2D);
-        drawGrid(graphics2D);
-
+        // Apply rotation and draw player
+        graphics2D.setColor(Color.WHITE);
     
-        // Draw line in the middle of the screen
+        // Save the original transform
+        AffineTransform originalTransform = graphics2D.getTransform();
+    
+        // Apply rotation
+        graphics2D.translate(playerX + TILE_SIZE / 2, playerY + TILE_SIZE / 2); // Move to center of player
+        graphics2D.rotate(playerRotation); // Apply rotation
+        graphics2D.translate(-TILE_SIZE / 2, -TILE_SIZE / 2); // Adjust back for drawing
+    
+        // Draw the player
+        graphics2D.fill(new Rectangle2D.Double(0, 0, TILE_SIZE, TILE_SIZE)); // Player rectangle
+
+
+        Shape ray;
+        ray = new Rectangle2D.Double(25, 0, 1, 200);
+       //check if
+      
+    
+        // Restore original transform
+        graphics2D.setTransform(originalTransform);
+    
+        // Draw other components
+        drawGrid(graphics2D);
         graphics2D.setColor(Color.WHITE);
         graphics2D.drawLine(HALFWAY_POINT_WIDTH, 0, HALFWAY_POINT_WIDTH, 512);
 
+        drawMap(graphics2D);
+
+   
     }
-
-    private void player(Graphics2D graphics2D) {
-        // Draw the player's rectangle and additional part
-        graphics2D.setColor(Color.WHITE);
-        graphics2D.fillRect(playerX, playerY, TILE_SIZE-1, TILE_SIZE-1); //minus 1 to fit in the grid i think
-        graphics2D.fillRect(playerX+9, playerY+10, 2, 20);
-
-
-    }
-
 
 
 
     public void drawGrid(Graphics graphics2D) {
-        int numCols = (WIDTH / 2) / 21; // Number of tiles horizontally
     
-        for (int i = 0; i < numCols; i++) { // Loop through columns
+        for (int i = 0; i < 10; i++) { // Loop through columns
             for (int j = 0; j < 24; j++) { // Loop through rows
                 // Draw each tile
                 graphics2D.setColor(Color.BLUE);
-                graphics2D.drawRect(i * 21, j * 21, 21, 21);
+                graphics2D.drawRect(i * 50, j * 50  , 50, 50);
+            }
+        }
+    }
+
+
+    public void drawWall(int x1, int x2, int b1, int b2){
+     
+
+    }
+
+    public void drawMap(Graphics graphics2D){
+        for (int i = 0; i < 10; i++) {
+            for (int j = 0; j < 10; j++) {
+                if(map[j][i] == 1){
+                    graphics2D.setColor(Color.WHITE);
+                    graphics2D.fillRect(i * TILE_SIZE, j * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                }
             }
         }
     }
     
- 
+
+    public void drawRays3D(Graphics graphics2D){
+        //draw 3d rays
+        
+    }
+
+
+  
 
 
     
